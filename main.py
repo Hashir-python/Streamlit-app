@@ -22,6 +22,12 @@ if uploaded_file is not None:
     st.write(df)
 
 if st.button("Submit"):
+
+    with st.spinner("Processing..."):
+        try:
+            st.ballons()
+        except Exception as e:
+            print(e)
     # Check if all fields are filled
     if not name:
         st.error("Please enter your name.")
