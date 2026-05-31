@@ -1,0 +1,41 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2 via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+
+            echo "🚀 Pulling latest Docker image..."
+            docker pull ${{ secrets.DOCKER_IMAGE }}
+
+            echo "🛑 Stopping old container (if exists)..."
+            docker stop streamlit-app || true
+            docker rm streamlit-app || true
+
+            echo "▶️ Running new container..."
+            docker run -d \
+              --name streamlit-app \
+              -p 8501:8501 \
+              ${{ secrets.DOCKER_IMAGE }}
+
+            echo "✅ Deployment successful!"
+          EOF
